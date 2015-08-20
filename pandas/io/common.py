@@ -187,14 +187,20 @@ def get_filepath_or_buffer(filepath_or_buffer, encoding=None,
             import boto
         except:
             raise ImportError("boto is required to handle gs files")
-        # Assuming CLIENT_ID and CLIENT_SECRET
-        # are environment variables
+        try:
+            from gcs_oauth2_boto_plugin import oauth2_plugin
+        except:
+            raise ImportError("gcs_oauth2_boto_plugin is required to handle gs"
+                              "files")
         parsed_url = parse_url(filepath_or_buffer)
 
         try:
             conn = boto.connect_gs()
-        except boto.exception.NoAuthHandlerFound:
-            raise ValueError
+        except boto.exception.NoAuthHandlerFound as e:
+            e.args += ("Make sure you're .boto file is setup correctly"
+                       "(check https://cloud.google.com/storage/docs/"
+                       "gspythonlibrary#credentials)",)
+            raise e
 
         b = conn.get_bucket(parsed_url.netloc, validate=False)
         k = boto.gs.key.Key(b)

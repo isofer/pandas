@@ -4265,6 +4265,11 @@ class TestGS(tm.TestCase):
             import boto
         except ImportError:
             raise nose.SkipTest("boto not installed")
+        try:
+            import gcs_oauth2_boto_plugin
+        except ImportError:
+            raise nose.SkipTest("gcs_oauth2_boto_plugin not installed")
+
 
     @tm.network
     def test_parse_public_gs_bucket(self):
