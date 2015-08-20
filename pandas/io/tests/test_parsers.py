@@ -4259,6 +4259,41 @@ class TestS3(tm.TestCase):
             pd.read_csv('s3://cant_get_it/')
 
 
+class TestGS(tm.TestCase):
+    def setUp(self):
+        try:
+            import boto
+        except ImportError:
+            raise nose.SkipTest("boto not installed")
+
+    @tm.network
+    def test_parse_public_gs_bucket(self):
+        import nose.tools as nt
+        df = pd.read_csv('gs://zulily-public-pandas-test/tips.csv')
+        nt.assert_true(isinstance(df, pd.DataFrame))
+        nt.assert_false(df.empty)
+        tm.assert_frame_equal(pd.read_csv(tm.get_data_path('tips.csv')), df)
+
+        # Read public file from bucket with not-public contents
+        df = pd.read_csv('gs://zulily-pandas-test-not-public/tips.csv')
+        nt.assert_true(isinstance(df, pd.DataFrame))
+        nt.assert_false(df.empty)
+        tm.assert_frame_equal(pd.read_csv(tm.get_data_path('tips.csv')), df)
+
+    @tm.network
+    def test_gs_fails(self):
+        import boto
+        with tm.assertRaisesRegexp(boto.exception.GSResponseError,
+                                'GSResponseError: 404 Not Found'):
+            pd.read_csv('gs://zulily-public-pandas-test/asdf.csv')
+
+        # Receive a permission error when trying to read a private bucket.
+        # It's irrelevant here that this isn't actually a table.
+        with tm.assertRaisesRegexp(boto.exception.GSResponseError,
+                                   'GSResponseError: 403 Forbidden'):
+            pd.read_csv('gs://example-travel-maps/')
+
+
 def assert_same_values_and_dtype(res, exp):
     tm.assert_equal(res.dtype, exp.dtype)
     tm.assert_almost_equal(res, exp)

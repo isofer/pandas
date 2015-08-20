@@ -73,6 +73,14 @@ def _is_s3_url(url):
         return False
 
 
+def _is_gs_url(url):
+    """Check for an gs url"""
+    try:
+        return parse_url(url).scheme == 'gs'
+    except:
+        return False
+
+
 def maybe_read_encoded_stream(reader, encoding=None, compression=None):
     """read an encoded stream from the reader and transform the bytes to
     unicode if required based on the encoding
@@ -151,6 +159,7 @@ def get_filepath_or_buffer(filepath_or_buffer, encoding=None,
                     [compression]
         return tuple(to_return)
 
+    # get s3 filepath/buffer
     if _is_s3_url(filepath_or_buffer):
         try:
             import boto
@@ -167,6 +176,28 @@ def get_filepath_or_buffer(filepath_or_buffer, encoding=None,
 
         b = conn.get_bucket(parsed_url.netloc, validate=False)
         k = boto.s3.key.Key(b)
+        k.key = parsed_url.path
+        filepath_or_buffer = BytesIO(k.get_contents_as_string(
+            encoding=encoding))
+        return filepath_or_buffer, None, compression
+
+    # get gs filepath/buffer
+    if _is_gs_url(filepath_or_buffer):
+        try:
+            import boto
+        except:
+            raise ImportError("boto is required to handle gs files")
+        # Assuming CLIENT_ID and CLIENT_SECRET
+        # are environment variables
+        parsed_url = parse_url(filepath_or_buffer)
+
+        try:
+            conn = boto.connect_gs()
+        except boto.exception.NoAuthHandlerFound:
+            raise ValueError
+
+        b = conn.get_bucket(parsed_url.netloc, validate=False)
+        k = boto.gs.key.Key(b)
         k.key = parsed_url.path
         filepath_or_buffer = BytesIO(k.get_contents_as_string(
             encoding=encoding))
